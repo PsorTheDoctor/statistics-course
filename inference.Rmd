@@ -1,0 +1,131 @@
+```{r}
+library(tidyverse)
+```
+
+# Normal distribution functions
+
+```{r}
+xframe <- seq(-10, 10, length = 100)
+dnorm(xframe)
+```
+```{r}
+plot(xframe, dnorm(xframe), type = "l")
+```
+```{r}
+pnorm(c(-1, 0, 1))
+```
+```{r}
+qnorm(c(0.1586553, 0.5000000, 0.8413447))
+```
+```{r}
+rnorm(100)
+```
+```{r}
+ggplot(data.frame(x = xframe), aes(x = x)) +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 1), color = 'blue') +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 2), color = 'green') +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 3), color = 'yellow') +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 4), color = 'red')
+```
+```{r}
+ggplot(data.frame(x = xframe), aes(x = x)) + 
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 1), color = 'blue') +
+  geom_segment(aes(x = 1, y = 0, xend = 1, yend = dnorm(1, mean = 0, sd = 1)), color = 'red', linetype = 'dashed')
+```
+```{r}
+hwusa <- read_csv('hw_usa.csv')
+```
+```{r}
+head(hwusa, 5)
+```
+```{r}
+hwusa <- hwusa %>%
+  mutate(Height = Height * 2.52, Weight = Weight * 0.453592)
+head(hwusa, 5)
+```
+```{r}
+ggplot(hwusa) +
+  geom_point(aes(x = Height, y = Weight, color = Gender))
+```
+```{r}
+ggplot(hwusa) +
+  geom_histogram(aes(x = Height, fill = Gender))
+```
+```{r}
+ggplot(hwusa) +
+  geom_density(aes(x = Height, fill = Gender), alpha = 0.3)
+```
+```{r}
+female <- hwusa %>%
+  filter(Gender == 'Female')
+
+sd_female <- sd(female$Height)
+mean_female <- mean(female$Height)
+ggplot(female) +
+  geom_histogram(aes(x = Height, y = ..density.., fill = 'red')) +
+  stat_function(fun = dnorm, args = list(mean = mean_female, sd = sd_female))
+```
+```{r}
+ggplot(female) +
+  stat_ecdf(aes(x = Height), color = 'red', alpha = 0.3) +
+  geom_line(stat = 'function', fun = pnorm, args = list(mean = mean_female, sd = sd_female), color = 'green')
+```
+```{r}
+ggplot(female) +
+  stat_qq(aes(sample = Height), color = 'red', alpha = 0.3) +
+  stat_qq_line(aes(sample = Height))
+```
+```{r}
+male <- hwusa %>%
+  filter(Gender == 'Male')
+mean_male <- mean(male$Height)
+sd_male <- sd(male$Height)
+
+(j_z_score <- (185 - mean_male) / sd_male)
+```
+```{r}
+ggplot(data.frame(x = seq(140, 220, length = 500)), aes(x = x)) +
+  stat_function(fun = dnorm, args = list(mean = mean_male, sd = sd_male)) +
+  geom_segment(aes(x = 185, y = 0, xend = 185, yend = dnorm(185, mean = mean_male, sd = sd_male), color = 'red')) +
+  geom_area(stat = 'function', fun = dnorm, args = list(mean = mean_male, sd = sd_male), fill = 'blue', 
+            xlim = c(150, 185), alpha = 0.5)
+```
+
+# Standard Error
+
+```{r}
+hwusa %>%
+  count(Gender)
+```
+```{r}
+male %>%
+  ggplot(aes(x = Height)) +
+  geom_histogram()
+```
+```{r}
+(SE_male <- sd_male / sqrt(nrow(male)))
+```
+```{r}
+mean_male - 1.96 * SE_male
+```
+```{r}
+mean_male + qnorm(0.025) * SE_male
+```
+```{r}
+mean_male + 1.96 * SE_male
+```
+```{r}
+mean_male + qnorm(0.975) * SE_male
+```
+```{r}
+mean_male - 2.58 * SE_male
+```
+```{r}
+mean_male + qnorm(0.005) * SE_male
+```
+```{r}
+mean_male + 2.58 * SE_male
+```
+```{r}
+mean_male + qnorm(0.995) * SE_male
+```
