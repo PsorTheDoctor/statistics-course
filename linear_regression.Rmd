@@ -1,0 +1,118 @@
+
+# Linear regression
+
+```{r}
+library(tidyverse)
+library(gapminder)
+```
+
+## 1. Investigating populations
+
+```{r}
+gapminder_european_data_from_1992 <- gapminder %>%
+  filter(year == 1992, continent == 'Europe')
+fit <- lm(lifeExp ~ gdpPercap, data = gapminder_european_data_from_1992)
+summary(fit)
+```
+```{r}
+ggplot(gapminder_european_data_from_1992) +
+  geom_point(aes(x = gdpPercap, y = lifeExp)) +
+  labs(x = 'Gross domestic product per capita [dollars]',
+       y = 'Life expectancy [years]',
+       title = 'GDP and Life expectancy in 1992 of European countries') +
+  geom_abline(intercept = fit$coefficients[[1]], slope=fit$coefficients[[2]])
+```
+```{r}
+plot(fit)
+```
+
+## 2. Cats body and heart weights
+
+```{r}
+library(boot)
+catsM
+```
+```{r}
+catsM %>%
+ggplot() + 
+  geom_point(aes(x = Bwt, y = Hwt)) + 
+  labs(x = 'Body weight [kg]', y = 'Heart weight [gram]', title = 'Cats body and heart weights') +
+  stat_smooth(aes(Bwt, Hwt), method = 'lm', fullrange = TRUE, se = FALSE)
+```
+```{r}
+fit <- lm(Hwt ~ Bwt, data = catsM)
+fit %>%
+  summary()
+```
+```{r}
+plot(fit)
+```
+
+## 3. Average temperatures
+
+```{r}
+# setwd('Downloads')
+temperatures <- readr::read_delim('temperatures.csv', delim = '\t')
+temperatures
+```
+```{r}
+avg_DK <- temperatures %>%
+  group_by(Country, Year) %>%
+  summarise(avg_temperature = mean(tas)) %>%
+  filter(Year >= 1975, Country == 'DNK')
+
+ggplot(avg_DK) +
+  geom_point(aes(x = Year, y = avg_temperature)) +
+  geom_smooth(aes(x = Year, y = avg_temperature), method = lm, se = FALSE)
+```
+```{r}
+fit <- lm(avg_temperature ~ Year, data = avg_DK)
+
+fit %>% summary()
+```
+```{r}
+plot(fit)
+```
+
+Predict the average temp for 2030
+```{r}
+summary(fit)$coefficients[1] + summary(fit)$coefficient[2] * 2030
+```
+
+## 4. Biogas usage over time
+
+```{r}
+biogas <- readr::read_delim('biogas_usage.csv', delim = ';')
+```
+
+a) Fit a linear model to the consumption
+```{r}
+biogas %>%
+ggplot() +
+  geom_line(aes(x = daynumber, y = biogas_usage)) + 
+  labs(x = 'Year', y = 'Consumption') +
+  stat_smooth(aes(daynumber, biogas_usage), method = 'lm', fullrange = TRUE, se = FALSE)
+```
+```{r}
+biogas %>% 
+  lm(biogas_usage ~ daynumber, data = .) -> biogas_fit
+summary(biogas_fit)
+```
+
+b) Predict the biogas consumption for day 3650
+```{r}
+summary(biogas_fit)$coefficients[1] + summary(biogas_fit)$coefficients[2] * 3650
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
