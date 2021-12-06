@@ -103,16 +103,3 @@ b) Predict the biogas consumption for day 3650
 ```{r}
 summary(biogas_fit)$coefficients[1] + summary(biogas_fit)$coefficients[2] * 3650
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
