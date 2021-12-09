@@ -1,0 +1,214 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Are Danes having fun in Denmark?
+
+```{r}
+library(plyr)
+
+# install.packages("GGally")
+library(tidyverse)
+library(GGally)
+library(ggthemes)
+options(repr.plot.width=32, repr.plot.height=20)
+```
+```{r}
+read_csv("./archive/world-happiness-report-2021.csv") -> data_2021_raw
+read_csv("./archive/world-happiness-report.csv") -> data_all_raw
+
+head(data_2021_raw)
+head(data_all_raw)
+```
+
+Combine two dataframes
+```{r}
+# Changing the column names of data_all_raw and naming the dataframe data_all
+data_all_raw %>% select(country = 'Country name', score = 'Life Ladder', 
+                        economy = 'Log GDP per capita',
+                        social_support = 'Social support',
+                        life_expectancy = 'Healthy life expectancy at birth',
+                        freedom = 'Freedom to make life choices',
+                        generosity = 'Generosity',
+                        corruption = 'Perceptions of corruption', year) -> data_all
+
+# Changing the column names of data_2021_raw and naming the dataframe data_all
+data_2021_raw %>% select(country = 'Country name', score = 'Ladder score', 
+                        economy = 'Logged GDP per capita',
+                        social_support = 'Social support',
+                        life_expectancy = 'Healthy life expectancy',
+                        freedom = 'Freedom to make life choices',
+                        generosity = 'Generosity',
+                        corruption = 'Perceptions of corruption',
+                        region = 'Regional indicator') -> data_2021
+
+data_2021 %>% select(country, region) -> continent
+
+full_join(data_all, continent, by = "country") -> data_all
+
+bind_rows(data_all, data_2021) -> data
+
+data[,"year"][is.na(data[,"year"])] <- 2021
+
+head(data)
+```
+
+## Denmark
+
+```{r}
+dk <- data %>% filter(country == "Denmark")
+
+ggplot(dk, aes(x = year, y = score, label = score)) + geom_point(size = 8, color = "black") +
+  theme_fivethirtyeight() +
+  geom_segment(aes(x = year, xend = year, y = 0, yend = score)) + 
+  scale_x_continuous(breaks = seq(2005, 2021, 1)) +
+  scale_y_continuous(breaks = seq(0, 7, 1)) + geom_text(color = 'white', size = 2) +
+  labs(title = "Are Danes having fun in Denmark?",
+       subtitle = "Happiness scores of Danes across the years",
+       x = "Year", y = "Happiness score") +
+  theme(plot.title = element_text(size = 15, face = "bold"),
+        plot.subtitle = element_text(size = 10),
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 8)) +
+  coord_flip()
+```
+
+Linear relationship between score and other variables
+```{r}
+dk_corr <- dk %>% select(-c(country, year, region))
+
+ggcorr(dk_corr,
+       method = c("everything", "pearson"),
+       size = 3, hjust = 0.77,
+       low = "#ff0000", mid = "white", high = "#2e8b57",
+       label = TRUE, label_size = 3,
+       layout.exp = 1) + theme_fivethirtyeight()
+```
+
+Note: live expectancy and economy have a strong linear correlation.
+
+## Denmark vs Europe
+
+```{r}
+happiest_countries_2021 <- data_2021 %>%
+    select(country, score) %>%
+    group_by(score) %>%
+    arrange(desc(score)) %>%
+    head(10)
+data.frame(happiest_countries_2021)
+```
+
+## Denmark vs Scandinavia 
+
+```{r}
+scandinavia <- data %>% filter(country == 'Denmark' | country == 'Norway' | country == 'Sweden' | 
+                                 country == 'Finland' | country == 'Iceland') %>%
+  group_by(year) %>% 
+  mutate(yrrank = row_number(-score))
+  
+ggplot(scandinavia, aes(x = year, y = score, label = yrrank)) + 
+  geom_point(aes(color = country), size = 5) +
+  theme_fivethirtyeight() +
+  geom_line(aes(color = country)) + scale_x_continuous(breaks = seq(2006, 2021, 1)) +
+  scale_y_continuous(breaks = seq(0, 5, 0.5)) + geom_text(color = 'white', size = 3) +
+  scale_color_manual(values = c("#b8860b", "#2e8b57", "#66ff00", "#560319", "#efcc00")) +
+  labs(title = 'Denmark vs Scandinavia', 
+       subtitle = 'Ranking the happiness score of European countries across the years',
+       x = 'Year', y = 'Happiness score') + 
+  theme(plot.title = element_text(size = 15, face = 'bold'),
+        plot.subtitle = element_text(size = 8),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 8),
+        legend.direction = 'horizontal', legend.position = 'bottom',
+        legend.title = element_blank(),
+        legend.text = element_text(size = 6))
+```
+
+## Denmark vs World
+
+```{r}
+data %>% mutate(region = case_when(country == 'Denmark' ~ 'Denmark', TRUE ~ region)) -> data
+
+unique(data['region'])
+colSums(is.na(data))
+
+data %>% filter(is.na(region)) -> na_region
+
+data %>%
+  mutate(
+    region = case_when(country =="Angola" | country == "Central African Republic" |
+                         country == "Congo (Kinshasa)" | country == "Djibouti"| 
+                         country == "Somalia" | country == "Somaliland region"|
+                         country == "South Sudan" | country == "Sudan"
+                       ~ "Sub-Saharan Africa", TRUE ~ region)) %>% 
+  mutate(
+    region = case_when(country == "Belize" | country == "Cuba" | country == "Guyana" |
+                         country == "Suriname" | country == "Trinidad and Tobago"
+                       ~ "Latin America and Caribbean", TRUE ~ region)) %>% 
+  mutate(
+    region = case_when(country == "Oman" | country == "Qatar" | country == "Syria" 
+                       ~ "Middle East and North Africa", TRUE ~ region)) %>% 
+  mutate(
+    region = case_when(country == "Bhutan" ~ "South Asia", TRUE ~ region)) -> data
+
+data %>% filter(is.na(region)) -> na_region
+
+revalue(data$region, c("Central and Eastern Europe" = "Europe and North Asia")) -> data$region
+revalue(data$region, c("Commonwealth of Independent States" = "Europe and North Asia")) -> data$region
+revalue(data$region, c("East Asia" = "West, East, Southeast Asia and North Africa")) -> data$region
+revalue(data$region, c("Southeast Asia" = "West, East, Southeast Asia and North Africa")) -> data$region
+revalue(data$region, c("Middle East and North Africa" = "West, East, Southeast Asia and North Africa")) -> data$region
+
+unique(data["region"])
+
+```
+```{r}
+data %>% select(year, region, score) %>% group_by(year,region) %>% summarise(avg_score = mean(score)) %>%
+mutate_at(vars(region), factor) %>% 
+group_by(year) %>% mutate(yrrank = row_number(-avg_score)) -> avg_region
+
+head(avg_region)
+
+```
+```{r}
+ggplot(avg_region, aes(x = year, y = avg_score, label = yrrank)) + 
+  theme_fivethirtyeight() +
+  geom_point(aes(color = region), size = 5) +
+  geom_line(aes(color = region)) + scale_x_continuous(breaks = seq(2006, 2021, 1)) +
+  scale_y_continuous(breaks = seq(0, 8, 0.5)) + geom_text(color = 'white', size = 3) +
+  scale_color_manual(values = c("#be4f62","#ff0000","#191970","#b8860b", "#2e8b57", "#8a2be2",
+                            "#000000","#66ff00")) +
+  labs(title = 'Denmark vs World',
+       subtitle = 'Average happiness score of each region in the world across the years',
+       x = 'Year', y = 'Happiness score') + 
+  theme(plot.title = element_text(size = 15, face = 'bold'),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 8),
+        legend.direction = 'horizontal', legend.position = 'bottom',
+        legend.title = element_blank(),
+        legend.text = element_text(size = 6))
+```
+
+## Denmark vs World in 2021
+
+```{r}
+data %>% filter(year == 2021) -> data_2021_final
+
+colSums(is.na(data_2021_final))
+
+head(data_2021_final)
+```
+```{r}
+data_2021_final %>% select(-c(country, year, region)) -> data_2021_corr
+
+ggcorr(data_2021_corr,
+       method = c("everything", "pearson"),
+       size = 3, hjust = 0.77,
+       low = "#ff0000", mid = "white", high = "#2e8b57",
+       label = TRUE, label_size = 3,
+       layout.exp = 1) + theme_fivethirtyeight()
+```
+
+Note: Economy, social support and life expectancy are highly correlated to score.
