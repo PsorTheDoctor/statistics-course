@@ -7,11 +7,11 @@ output:
 # Are Danes having fun in Denmark?
 
 Semester project for Statistics course.
+
 Author: Adam Wolkowycki
 
 ```{r}
 library(plyr)
-
 # install.packages("GGally")
 library(tidyverse)
 library(GGally)
@@ -27,6 +27,7 @@ head(data_all_raw)
 ```
 
 Combine two dataframes
+
 ```{r}
 # Changing the column names of data_all_raw and naming the dataframe data_all
 data_all_raw %>% select(country = 'Country name', score = 'Life Ladder', 
@@ -78,7 +79,8 @@ ggplot(dk, aes(x = year, y = score, label = score)) + geom_point(size = 8, color
   coord_flip()
 ```
 
-Linear relationship between score and other variables
+After seeing the scores, I want to see the linear relationship between score and other variables.
+
 ```{r}
 dk_corr <- dk %>% select(-c(country, year, region))
 
@@ -100,14 +102,28 @@ happiest_countries_2021 <- data_2021 %>%
     group_by(score) %>%
     arrange(desc(score)) %>%
     head(10)
-data.frame(happiest_countries_2021)
+
+ggplot(happiest_countries_2021, aes(x = country, y = score, label = score)) + 
+  geom_point(size = 8, color = "black") +
+  theme_fivethirtyeight() +
+  geom_segment(aes(x = country, xend = country, y = 0, yend = score)) + 
+  geom_text(color = 'white', size = 2) +
+  labs(title = "TOP 10",
+       subtitle = "Scores of the happpest countries in 2021",
+       x = "Year", y = "Happiness score") +
+  theme(plot.title = element_text(size = 15, face = "bold"),
+        plot.subtitle = element_text(size = 10),
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 8)) +
+  coord_flip()
 ```
 
 ## Denmark vs Scandinavia 
 
 ```{r}
-scandinavia <- data %>% filter(country == 'Denmark' | country == 'Norway' | country == 'Sweden' | 
-                                 country == 'Finland' | country == 'Iceland') %>%
+scandinavia <- data %>% filter(country == 'Denmark' | country == 'Norway' | 
+                                 country == 'Sweden' | country == 'Finland' | 
+                                 country == 'Iceland') %>%
   group_by(year) %>% 
   mutate(yrrank = row_number(-score))
   
@@ -132,13 +148,19 @@ ggplot(scandinavia, aes(x = year, y = score, label = yrrank)) +
 ## Denmark vs World
 
 ```{r}
-data %>% mutate(region = case_when(country == 'Denmark' ~ 'Denmark', TRUE ~ region)) -> data
+# Changing the values of region column in Denmark for grasping purposes
+data %>% 
+  mutate(region = case_when(country == 'Denmark' ~ 'Denmark', TRUE ~ region)) -> data
 
+# Checking the unique and missing values
 unique(data['region'])
 colSums(is.na(data))
 
+# There are 63 missing values in the column region, so
+# investigate null values in this column
 data %>% filter(is.na(region)) -> na_region
 
+# Fill up values of the countries with NA region
 data %>%
   mutate(
     region = case_when(country =="Angola" | country == "Central African Republic" |
@@ -156,27 +178,44 @@ data %>%
   mutate(
     region = case_when(country == "Bhutan" ~ "South Asia", TRUE ~ region)) -> data
 
+# Checking if any country is missed
 data %>% filter(is.na(region)) -> na_region
 
-revalue(data$region, c("Central and Eastern Europe" = "Europe and North Asia")) -> data$region
-revalue(data$region, c("Commonwealth of Independent States" = "Europe and North Asia")) -> data$region
-revalue(data$region, c("East Asia" = "West, East, Southeast Asia and North Africa")) -> data$region
-revalue(data$region, c("Southeast Asia" = "West, East, Southeast Asia and North Africa")) -> data$region
-revalue(data$region, c("Middle East and North Africa" = "West, East, Southeast Asia and North Africa")) -> data$region
+# Combining some regions
+revalue(data$region, c("Central and Eastern Europe" = "Europe and North Asia")) -> 
+  data$region
+revalue(data$region, c("Commonwealth of Independent States" = "Europe and North Asia")) -> 
+  data$region
+revalue(data$region, c("East Asia" = "West, East, Southeast Asia and North Africa")) -> 
+  data$region
+revalue(data$region, c("Southeast Asia" = "West, East, Southeast Asia and North Africa")) -> 
+  data$region
+revalue(data$region, c("Middle East and North Africa" = "West, East, Southeast Asia and North Africa")) -> 
+  data$region
 
+# Checking the new set of unique values
 unique(data["region"])
 ```
+
+Creating a new dataframe with average happiness score of each country 
+based on their region and also ranking them by year.
+
 ```{r}
-data %>% select(year, region, score) %>% group_by(year,region) %>% summarise(avg_score = mean(score)) %>%
-mutate_at(vars(region), factor) %>% 
-group_by(year) %>% mutate(yrrank = row_number(-avg_score)) -> avg_region
+data %>% 
+  select(year, region, score) %>% 
+  group_by(year,region) %>% 
+  summarise(avg_score = mean(score)) %>%
+  mutate_at(vars(region), factor) %>% 
+  group_by(year) %>% 
+  mutate(yrrank = row_number(-avg_score)) -> avg_region
 
 head(avg_region)
 ```
 ```{r}
 worldmap = map_data('world') %>% filter(region != 'Antarctica')
 
-merged_data <- merge(x = worldmap, y = data_2021, by.x = 'region', by.y = 'country', all.x = TRUE) %>% 
+merged_data <- merge(x = worldmap, y = data_2021, 
+                     by.x = 'region', by.y = 'country', all.x = TRUE) %>% 
   arrange(order)
 ggplot(merged_data, aes(x = long, y = lat, group = group)) +
   geom_polygon(aes(fill = score)) +
@@ -194,8 +233,8 @@ ggplot(avg_region, aes(x = year, y = avg_score, label = yrrank)) +
   geom_point(aes(color = region), size = 5) +
   geom_line(aes(color = region)) + scale_x_continuous(breaks = seq(2006, 2021, 1)) +
   scale_y_continuous(breaks = seq(0, 8, 0.5)) + geom_text(color = 'white', size = 3) +
-  scale_color_manual(values = c("#be4f62","#ff0000","#191970","#b8860b", "#2e8b57", "#8a2be2",
-                            "#000000","#66ff00")) +
+  scale_color_manual(values = c("#be4f62","#ff0000","#191970","#b8860b", 
+                                "#2e8b57", "#8a2be2", "#000000", "#66ff00")) +
   labs(title = 'Denmark vs World',
        subtitle = 'Average happiness score of each region in the world across the years',
        x = 'Year', y = 'Happiness score') + 
@@ -209,6 +248,8 @@ ggplot(avg_region, aes(x = year, y = avg_score, label = yrrank)) +
 
 ## Denmark vs World in 2021
 
+Now, I am using 2021 data and it doesn't have null values.
+
 ```{r}
 data %>% filter(year == 2021) -> data_2021_final
 
@@ -216,6 +257,10 @@ colSums(is.na(data_2021_final))
 
 head(data_2021_final)
 ```
+
+Once again, I want to see the linear relationship between the variables, 
+so I am making a correlation matrix.
+
 ```{r}
 data_2021_final %>% select(-c(country, year, region)) -> data_2021_corr
 
@@ -246,7 +291,6 @@ ggplot(data_2021) +
 ```{r}
 xframe <- seq(-10, 10, length = 100)
 dnorm(xframe)
-plot(xframe, dnorm(xframe), type = 'l')
 
 sd_world <- sd(data_2021$score)
 mean_world <- mean(data_2021$score)
@@ -265,23 +309,34 @@ ggplot(data_2021) +
   stat_qq_line(aes(sample = score))
 ```
 
-Let's assume that the mean happiness is less than 7.
+Let's assume that the mean happiness is equal 7.
+
 ```{r}
 x_dash <- 7
 z_score <- (x_dash - mean_world) / sd_world
 
 ggplot(data.frame(x = seq(0, 10, length = 500)), aes(x = x)) +
   stat_function(fun = dnorm, args = list(mean = mean_world, sd = sd_world)) +
-  geom_segment(aes(x = x_dash, y = 0, xend = x_dash, yend = dnorm(x_dash, mean = mean_world, sd = sd_world), color = 'red')) +
+  geom_segment(aes(x = x_dash, y = 0, xend = x_dash, 
+                   yend = dnorm(x_dash, mean = mean_world, sd = sd_world), color = 'red')) +
   geom_area(stat = 'function', fun = dnorm, args = list(mean = mean_world, sd = sd_world), 
             fill = 'blue', xlim = c(0, x_dash), alpha = 0.5)
 ```
+```{r}
+pnorm(z_score)
+pnorm(x_dash, mean_world, sd_world)
+```
 
-## Regression
+Note: Speaking of the population from a sample, we can say that 
+the mean happiness score is less than 7 with 91.4% confidence.
+
+## Linear regression
 
 ```{r}
+# Merging the Europe to make trend more linear
 data_2021 %>%
-  mutate(region = case_when(region == 'Central and Eastern Europe' | region == 'Western Europe' ~ 'Europe', 
+  mutate(region = case_when(region == 'Central and Eastern Europe' | 
+                              region == 'Western Europe' ~ 'Europe', 
                             TRUE ~ region)) -> data_2021_merged
 
 ggplot(data_2021_merged, aes(x = life_expectancy, y = score)) +
@@ -292,4 +347,31 @@ ggplot(data_2021_merged, aes(x = life_expectancy, y = score)) +
   theme(legend.direction = 'horizontal', legend.position = 'bottom',
         legend.title = element_blank(),
         legend.text = element_text(size = 6))
+```
+
+## Predictions
+
+Predict the happiness score of 90 year old people from various regions.
+
+```{r}
+data_2021_merged %>% filter(region == 'Europe') %>%
+  lm(score ~ life_expectancy, data = .) -> eur_fit
+
+data_2021_merged %>% filter(region == 'Latin America and Caribbean') %>%
+  lm(score ~ life_expectancy, data = .) -> la_fit
+
+data_2021_merged %>% filter(region == 'North America and ANZ') %>%
+  lm(score ~ life_expectancy, data = .) -> na_fit
+
+data_2021_merged %>% filter(region == 'South Asia') %>%
+  lm(score ~ life_expectancy, data = .) -> asia_fit
+
+# Europe
+summary(eur_fit)$coefficients[1] + summary(eur_fit)$coefficients[2] * 90
+# Latin America
+summary(la_fit)$coefficients[1] + summary(la_fit)$coefficients[2] * 90
+# North America
+summary(na_fit)$coefficients[1] + summary(na_fit)$coefficients[2] * 90
+# Asia
+summary(asia_fit)$coefficients[1] + summary(asia_fit)$coefficients[2] * 90
 ```
