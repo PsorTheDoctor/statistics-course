@@ -1,2 +1,2 @@
 # statistics-course
-Code for our statistics semester project.
+Code for my statistics semester project.
