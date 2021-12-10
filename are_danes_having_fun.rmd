@@ -6,6 +6,9 @@ output:
 
 # Are Danes having fun in Denmark?
 
+Semester project for Statistics course.
+Author: Adam Wolkowycki
+
 ```{r}
 library(plyr)
 
@@ -162,7 +165,6 @@ revalue(data$region, c("Southeast Asia" = "West, East, Southeast Asia and North 
 revalue(data$region, c("Middle East and North Africa" = "West, East, Southeast Asia and North Africa")) -> data$region
 
 unique(data["region"])
-
 ```
 ```{r}
 data %>% select(year, region, score) %>% group_by(year,region) %>% summarise(avg_score = mean(score)) %>%
@@ -170,7 +172,21 @@ mutate_at(vars(region), factor) %>%
 group_by(year) %>% mutate(yrrank = row_number(-avg_score)) -> avg_region
 
 head(avg_region)
+```
+```{r}
+worldmap = map_data('world') %>% filter(region != 'Antarctica')
 
+merged_data <- merge(x = worldmap, y = data_2021, by.x = 'region', by.y = 'country', all.x = TRUE) %>% 
+  arrange(order)
+ggplot(merged_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = score)) +
+
+theme_fivethirtyeight() +
+  scale_fill_continuous(low = 'white', high = '#2e8b57') +
+  labs(title = "World's Average Happiness",
+       subtitle = 'Average happiness score of each region in the world in 2021') +
+  theme(legend.direction = 'vertical', legend.position = 'right',
+        legend.text = element_text(size = 10))
 ```
 ```{r}
 ggplot(avg_region, aes(x = year, y = avg_score, label = yrrank)) + 
@@ -212,3 +228,68 @@ ggcorr(data_2021_corr,
 ```
 
 Note: Economy, social support and life expectancy are highly correlated to score.
+
+## Inference
+
+```{r}
+ggplot(data_2021) +
+  geom_point(aes(x = economy, y = score, color = region))
+```
+```{r}
+ggplot(data_2021) +
+  geom_histogram(aes(x = economy, fill = region))
+```
+```{r}
+ggplot(data_2021) +
+  geom_density(aes(x = score, fill = region), alpha = 0.3)
+```
+```{r}
+xframe <- seq(-10, 10, length = 100)
+dnorm(xframe)
+plot(xframe, dnorm(xframe), type = 'l')
+
+sd_world <- sd(data_2021$score)
+mean_world <- mean(data_2021$score)
+ggplot(data_2021) +
+  geom_histogram(aes(x = score, y = ..density.., fill = 'red')) +
+  stat_function(fun = dnorm, args = list(mean = mean_world, sd = sd_world))
+```
+```{r}
+ggplot(data_2021) +
+  stat_ecdf(aes(x = score), color = 'red', alpha = 0.3) +
+  geom_line(stat = 'function', fun = pnorm, args = list(mean = mean, sd = sd))
+```
+```{r}
+ggplot(data_2021) +
+  stat_qq(aes(sample = score), color = 'red', alpha = 0.3) +
+  stat_qq_line(aes(sample = score))
+```
+
+Let's assume that the mean happiness is less than 7.
+```{r}
+x_dash <- 7
+z_score <- (x_dash - mean_world) / sd_world
+
+ggplot(data.frame(x = seq(0, 10, length = 500)), aes(x = x)) +
+  stat_function(fun = dnorm, args = list(mean = mean_world, sd = sd_world)) +
+  geom_segment(aes(x = x_dash, y = 0, xend = x_dash, yend = dnorm(x_dash, mean = mean_world, sd = sd_world), color = 'red')) +
+  geom_area(stat = 'function', fun = dnorm, args = list(mean = mean_world, sd = sd_world), 
+            fill = 'blue', xlim = c(0, x_dash), alpha = 0.5)
+```
+
+## Regression
+
+```{r}
+data_2021 %>%
+  mutate(region = case_when(region == 'Central and Eastern Europe' | region == 'Western Europe' ~ 'Europe', 
+                            TRUE ~ region)) -> data_2021_merged
+
+ggplot(data_2021_merged, aes(x = life_expectancy, y = score)) +
+  geom_point(aes(color = region), size = 3, alpha = 0.8) +
+  geom_smooth(aes(color = region, fill = region), method = 'lm', fullrange = TRUE) +
+  facet_wrap(~region) +
+  theme_fivethirtyeight() +
+  theme(legend.direction = 'horizontal', legend.position = 'bottom',
+        legend.title = element_blank(),
+        legend.text = element_text(size = 6))
+```
