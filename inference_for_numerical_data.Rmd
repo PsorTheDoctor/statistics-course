@@ -1,0 +1,201 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Student t-distribution
+
+```{r}
+xframe <- seq(-5, 5, length = 100)
+df <- 5
+dt (xframe, df)
+
+plot(xframe, dt(xframe, df), type = 'l')
+```
+
+# One sample t-test
+
+```{r}
+kiwi <- read_csv('Downloads/kiwi.csv') %>%
+  janitor::clean_names()
+
+head(kiwi, 5)
+```
+
+## CLT Conditions
+
+```{r}
+kiwi_gs_m <- kiwi %>% 
+  filter(species_code == 'GS', gender == 'M')
+
+nrow(kiwi_gs_m)
+```
+```{r}
+ggplot(kiwi_gs_m) +
+  geom_histogram(aes(x = height_cm, bin = 30))
+```
+```{r}
+ggplot(kiwi_gs_m) + 
+  geom_histogram(aes(x = height_cm, y = ..density..)) +
+  stat_function(fun = dnorm, args = list(mean = mean(kiwi_gs_m$height_cm),
+                                         sd = sd(kiwi_gs_m$height_cm)))
+```
+
+## Setup the hypothesis
+
+H_0: Population mean of male kiwis is 45 cm
+H_1: Population mean of male kiwis is not 45 cm
+
+## Assume threshold values
+
+alpha = 0.05
+
+## Calculate the results
+
+```{r}
+(point_estimate <- mean(kiwi_gs_m$height_cm))
+(sample_sd <- sd(kiwi_gs_m$height_cm))
+(SE_gs_m <- sample_sd / sqrt(nrow(kiwi_gs_m)))
+(df_gs_m <- nrow(kiwi_gs_m) - 1)
+(t_statistics <- (point_estimate - 45) / SE_gs_m)
+```
+```{r}
+ggplot(data.frame(x = seq(-4, 4, length = 200)), aes(x = x)) +
+  stat_function(fun = dt, args = list(df = df_gs_m)) +
+  geom_segment(aes(x = 0, y = 0, xend = 0, yend = dt(0, df = df_gs_m)),
+               color = 'blue', linetype = 'dashed') +
+  geom_segment(aes(x = t_statistics, y = 0, xend = t_statistics, 
+                   yend = dt(t_statistics, df = df_gs_m)), color = 'red')
+```
+```{r}
+(p_value <- 2 * (1 - pt(t_statistics, df = df_gs_m)))
+```
+
+## Draw conclusions
+
+We reject H0 hypothesis in favor of alternative.
+Mean Male Great Spotted Kiwi is not 45 cm tall.
+
+```{r}
+t.test(kiwi_gs_m$height_cm, mu = 45)
+```
+
+# Difference of means t-test
+
+We want to check if mean male Great Spotted are same height as mean male Takoeka.
+
+```{r}
+kiwi_gs_t <- kiwi %>% 
+  filter(species_code == 'Tok', gender == 'M')
+```
+
+## Check CLT conditions
+
+```{r}
+nrow(kiwi_gs_t)
+nrow(kiwi_gs_m)
+```
+
+```{r}
+ggplot(kiwi_gs_t) +
+  geom_histogram(aes(x = height_cm, y = ..density.., bin = 30)) +
+  stat_function(fun = dnorm, args = list(mean = mean(kiwi_gs_t$height_cm), sd = sd(kiwi_gs_t$height_cm)))
+```
+
+## Setup the hypothesis
+
+$$H_0: mean_{GS} - mean_{Tokoeka} = 0$$
+$$H_1: mean_{GS} - mean_{Tokoeka} \neq 0$$
+
+## Assume threshold values
+
+alpha = 0.05
+
+## Calculate the results
+
+```{r}
+(point_estimate <- mean(kiwi_gs_t$height_cm) - mean(kiwi_gs_m$height_cm))
+(SE <- sqrt((sd(kiwi_gs_m$height_cm) ^ 2 / nrow(kiwi_gs_m)) + (sd(kiwi_gs_t$height_cm) ^ 2 / nrow(kiwi_gs_t))))
+(df <- nrow(kiwi_gs_m) - 1)
+(t_statistics <- (point_estimate - 0) / SE)
+```
+```{r}
+ggplot(data.frame(x = seq(-4, 4, length = 100)), aes(x = x)) +
+  stat_function(fun = dt, args = list(df = df)) +
+  geom_segment(aes(x = t_statistics, y = 0, xend = t_statistics, yend = 0.4,
+                   color = 'red'))
+```
+```{r}
+(p_value <- 2 * pt(t_statistics, df = df))
+```
+
+## Draw conclusions
+
+We reject H0 hypothesis in favor of alternative.
+Mean Male Great Spotted Kiwis is are of different height than Tokoekas.
+
+```{r}
+t.test(kiwi_gs_m$height_cm, kiwi_gs_t$height_cm)
+```
+
+# Paired data t-test
+
+We want to compare two types of antiperspirant. We had 20 customers try both
+formulas and grade them. We want to picke the winner.
+
+```{r}
+anti <- read_delim('Downloads/antiper1.dat', delim = ';')
+```
+```{r}
+anti <- anti %>%
+  mutate(diff = DryPowderScore - PowderInOilScore)
+
+head(anti, 5)
+```
+
+## Check CLT conditions 
+
+- Samples are independent
+- Sample size is bigger or equal to 30
+```{r}
+nrow(anti)
+```
+
+- Population distribution is not strongly skewed
+
+```{r}
+ggplot(anti) +
+  geom_density(aes(x = DryPowderScore), fill = 'brown', alpha = 0.3) +
+  geom_density(aes(x = PowderInOilScore), fill = 'black', alpha = 0.3)
+```
+
+## Setup the hypothesis
+
+$$H_0: mean_{diff} = 0$$
+$$H_1: mean_{diff} \neq 0$$
+
+## Assume threshold values
+
+alpha - significance level - typically 0.05
+
+## Calculate the results
+
+```{r}
+(point_estimate <- mean(anti$diff))
+(sd_anti <- sd(anti$diff))
+(SE_anti <- sd_anti / sqrt(nrow(anti)))
+(df_anti <- nrow(anti) - 1)
+(t_statistics <- (point_estimate - 0) / SE_anti)
+(p_value_anti <- 2 * (1 - pt(t_statistics, df = df_anti)))
+```
+```{r}
+ggplot(data.frame(x = seq(-4, 4, length = 100)), aes(x = x)) +
+  stat_function(fun = dt, args = list(df = df_anti)) +
+  geom_segment(aes(x = t_statistics, y = 0, xend = t_statistics, yend = 0.4,
+                   color = 'red'))
+```
+
+## Draw conclusions
+
+We reject H0 hypothesis in favor of alternative. Those two antiperspirants 
+don't score the same with customers. Winner is DryPowderScore.
