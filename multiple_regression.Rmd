@@ -1,0 +1,48 @@
+
+# Multiple regression
+
+```{r}
+library(tidyverse)
+library(openintro)
+```
+```{r}
+mariokart
+```
+```{r}
+colnames(mariokart)
+```
+```{r}
+ggplot(mariokart) +
+  geom_histogram(aes(x = total_pr))
+```
+```{r}
+mariokart %>% arrange(desc(total_pr))
+```
+```{r}
+mk <- mariokart %>% filter(total_pr < 100)
+
+ggplot(mk) +
+  geom_histogram(aes(x = total_pr))
+```
+```{r}
+fit <- lm(total_pr ~ duration +
+            n_bids +
+            cond +
+            start_pr +
+            # ship_pr +
+            seller_rate +
+            # stock_photo +
+            wheels,
+          data = mk)
+summary(fit)
+```
+```{r}
+plot(fit)
+```
+
+total_pr = 3.860e+01 + duration * -1.891e-01 
+          + n_bids * 1.737e-01  
+          + cond(used) * -4.476e+00 
+          + start_pr * 1.527e-01 
+          + seller_rate * 1.796e-05  
+          + wheels * 7.117e+00 
