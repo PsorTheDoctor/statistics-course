@@ -1,0 +1,145 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Chi^2 distribution
+
+```{r}
+ggplot(data.frame(x = seq(0, 30, length = 100)), aes(x = x)) +
+  stat_function(fun = dchisq, args = list(df = 2), color = 'blue') +
+  stat_function(fun = dchisq, args = list(df = 3), color = 'green') +
+  stat_function(fun = dchisq, args = list(df = 5), color = 'yellow') +
+  stat_function(fun = dchisq, args = list(df = 7), color = 'orange') +
+  stat_function(fun = dchisq, args = list(df = 11), color = 'red') +
+  stat_function(fun = dchisq, args = list(df = 19), color = 'purple') 
+```
+
+# Chi^2 goodness of fit test
+
+Sample of 669 Haribo Gummy Bears
+
+```{r}
+(gummy_bears <- c(83, 142, 100, 103, 104, 137))
+```
+
+H0: Equal proportion of all flavours of gummy bears are produced
+H1: Unequal proportion of all flavours of gummy bears are produced
+
+```{r}
+alpha <- 0.05 
+(expected <- 669 / 6)
+```
+
+$$Z_n = \frac{observed\:count - null\:count}{\sqrt{null\:count}}$$
+
+$$X^2 = Z_1^2 + Z_2^2 + \cdots + Z_n^2$$
+
+```{r}
+(gummy_Z <- (gummy_bears - expected) / sqrt(expected))
+
+(chi_score <- sum(gummy_Z ^ 2))
+```
+
+df = 5
+
+```{r}
+ggplot(data.frame(x = seq(0, 30, length = 100)), aes(x = x)) +
+  stat_function(fun = dchisq, args = list(df = 5)) +
+  geom_vline(xintercept = chi_score, color = 'green')
+```
+
+```{r}
+(p_value <- 1 - pchisq(chi_score, df = 5))
+
+p_value > alpha
+```
+
+We reject hypothesis H0 in favor of the alternative. There is no equal 
+proportion in between flavours of gummy bears being produced.
+
+```{r}
+chisq.test(x = gummy_bears, p = rep(c(expected), length(gummy_bears)),
+           rescale.p = TRUE)
+```
+
+# Chi^2 test for independence
+
+```{r}
+(movies_pizza <- tribble(
+  ~Movie, ~Pepperoni, ~Mushrooms, ~Kebab,
+  'Frozen 2', 20, 10, 5,
+  'Joker', 15, 12, 15,
+  'Someone great', 8, 13, 2
+))
+```
+
+H0: There is no correlation in between pizza topping and movie
+H1: There is correlation in between pizza topping and movie
+
+$$Expected\:count _{\text{row } i, \text{col } j} = \frac{(\text{row } i \text{ total}) \times(\text{column } j \text{ total})}{\text {table total}}$$
+
+```{r}
+P_total <- sum(movies_pizza$Pepperoni)
+M_total <- sum(movies_pizza$Mushrooms)
+K_total <- sum(movies_pizza$Kebab)
+(total <- P_total + M_total + K_total)
+```
+```{r}
+movies_pizza <- movies_pizza %>%
+  mutate(P_exp = (Pepperoni + Mushrooms + Kebab) * P_total / total) %>%
+  mutate(M_exp = (Pepperoni + Mushrooms + Kebab) * M_total / total) %>%
+  mutate(K_exp = (Pepperoni + Mushrooms + Kebab) * K_total / total)
+```
+
+$$Z_n = \frac{observed\:count - null\:count}{\sqrt{null\:count}}$$
+```{r}
+movies_pizza <- movies_pizza %>%
+  mutate(P_Z = ((Pepperoni - P_exp) / sqrt(P_exp)) ^ 2) %>%
+  mutate(M_Z = ((Mushrooms - M_exp) / sqrt(M_exp)) ^ 2) %>%
+  mutate(K_Z = ((Kebab - K_exp) / sqrt(K_exp)) ^ 2)
+
+(chi_score_mp <- sum(movies_pizza$P_Z) + sum(movies_pizza$M_Z) + sum(movies_pizza$K_Z))
+```
+
+$$d f = (R-1) \times(C-1)$$
+
+df = 4
+
+```{r}
+ggplot(data.frame(x = seq(0, 15, length = 100)), aes(x = x)) +
+  stat_function(fun = dchisq, args = list(df = 4)) +
+  geom_vline(xintercept = chi_score_mp, color = 'purple')
+```
+
+```{r}
+(p_value_mp <- 1 - pchisq(chi_score_mp, df = 4))
+```
+
+We reject H0 hypothesis in favor of the alternative. There is some correlation
+on between pizza toppings and movies.
+
+```{r}
+(movies_pizza <- tribble(
+  ~Movie, ~Pepperoni, ~Mushrooms, ~Kebab,
+  'Frozen 2', 20, 10, 5,
+  'Joker', 15, 12, 15,
+  'Someone great', 8, 13, 2
+))
+```
+```{r}
+movies_pizza %>% select(-Movie) %>%
+  chisq.test()
+```
+
+
+
+
+
+
+
+
+
+
+
+
