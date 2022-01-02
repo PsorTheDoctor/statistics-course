@@ -1,0 +1,79 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## One sample proportion test
+
+$$SE = \sqrt{\frac{p \cdot(1 - p)}{n}}$$
+H_0: 50% of NBA players is over 200 cm tall: p = 0.5
+H_1: over 50% of NBA players is over 200 cm tall: p > 0.5
+
+```{r}
+alpha <- 0.5
+nba <- readr::read_csv('Downloads/nba_ht_wt.csv')
+```
+```{r}
+nba <- nba %>% mutate(Height = Height * 2.54)
+```
+```{r}
+(n_success <- nba %>% filter(Height > 200) %>% nrow())
+nba %>% filter(Height <= 200) %>% nrow()
+```
+```{r} 
+n_sample <- nrow(nba)
+(point_estimate_nba <- n_success / n_sample)
+(SE_nba <- sqrt(0.5 * 0.5 / n_sample))
+```
+```{r}
+ggplot(data.frame(x = seq(0.4, 0.6, length = 100)), aes(x = x)) +
+  stat_function(fun = dnorm, args = list(mean = 0.5, sd = SE_nba)) +
+  geom_vline(xintercept = point_estimate_nba, color = 'red')
+```
+```{r}
+(p_value <- (1 - pnorm(point_estimate_nba, mean = 0.5, sd = SE_nba)))
+```
+
+We reject hypothesis H0 in favor of alternative. 
+More than half of NBA players is over 200 cm tall.
+
+# Difference of proportion 
+
+$$H_0: p_1 - p_2 = 0$$
+$$H_1: p1 - p_2 \neq 0$$
+
+Pooled proportion
+
+```{r}
+(p_pooled <- (132 + 111) / (23935 + 22312))
+p_pooled * 23935 
+p_pooled * 22312
+(1 - p_pooled) * 23935 
+(1 - p_pooled) * 22312
+```
+```{r}
+alpha <- 0.05
+
+proportion1 <- 132 / 23935
+proportion2 <- 111 / 22312
+(point_estimate_zippers <- proportion1 - proportion2)
+```
+
+$$SE = \sqrt{\frac{p_1 \cdot(1 - p_1)}{n_1} + \frac{p_2 \cdot(1 - p_2)}{n_2}}$$
+
+```{r}
+(SE_zippers <- sqrt(proportion1 * (1 - proportion1) / 23935 + 
+                      proportion2 * (1 - proportion2) / 22312))
+```
+```{r}
+ggplot(data.frame(x = seq(-0.0025, 0.0025, length = 100)), aes(x = x)) +
+  stat_function(fun = dnorm, args = list(mean = 0, sd = SE_zippers)) +
+  geom_vline(xintercept = point_estimate_zippers, color = 'red')
+```
+```{r}
+(p_value_zippers <- 2 * (1 - pnorm(point_estimate_zippers, 
+                                   mean = 0, sd = SE_zippers)))
+p_value_zippers > alpha
+```
+
+We accept hypothesis H0 and reject the alternative. 
